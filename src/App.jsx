@@ -74,8 +74,6 @@ export default function App() {
       }
     } catch (err) {
       setDbStatus('disconnected');
-    } finally {
-      setLoadingInitial(false);
     }
   }, []);
 

@@ -33,10 +33,14 @@ app.use(cors({
   origin: (origin, cb) => {
     if (!origin) return cb(null, true);
     const normalizedOrigin = origin.replace(/\/$/, '');
-    if (allowedOrigins.includes(normalizedOrigin) || allowedOrigins.includes('*')) {
-      return cb(null, true);
-    }
-    if (process.env.NODE_ENV !== 'production' && (origin.includes('localhost') || origin.includes('127.0.0.1'))) {
+    if (
+      allowedOrigins.includes(normalizedOrigin) ||
+      allowedOrigins.includes('*') ||
+      normalizedOrigin.endsWith('.vercel.app') ||
+      normalizedOrigin.includes('vercel.app') ||
+      normalizedOrigin.includes('localhost') ||
+      normalizedOrigin.includes('127.0.0.1')
+    ) {
       return cb(null, true);
     }
     cb(new Error(`CORS: origin ${origin} not allowed.`));
@@ -47,8 +51,8 @@ app.use(cors({
 app.use(express.json({ limit: '2mb' }));
 app.use(express.urlencoded({ extended: true, limit: '2mb' }));
 
-// ── Health check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+// ── Health check (available at /api/health and /health) ───────────────────────
+const healthCheck = (_req, res) => {
   res.json({
     status: 'ok',
     service: 'ParcelPilot API',
@@ -56,16 +60,26 @@ app.get('/api/health', (_req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
   });
-});
+};
+app.get('/api/health', healthCheck);
+app.get('/health', healthCheck);
 
-// ── Routes ───────────────────────────────────────────────────────────────────
+// ── Routes (mounted on both /api and root for flexibility) ───────────────────
 app.use('/api/auth', authRoutes);
-app.use('/api/shipments', shipmentRoutes);
+app.use('/auth', authRoutes);
 
-// Dashboard / activity / reports as top-level routes
+app.use('/api/shipments', shipmentRoutes);
+app.use('/shipments', shipmentRoutes);
+
+// Dashboard / activity / reports
 app.get('/api/dashboard/stats', protect, requireStaff, getDashboardStats);
+app.get('/dashboard/stats', protect, requireStaff, getDashboardStats);
+
 app.get('/api/activity', protect, requireStaff, getActivity);
+app.get('/activity', protect, requireStaff, getActivity);
+
 app.get('/api/reports/shipments', protect, requireStaff, getReports);
+app.get('/reports/shipments', protect, requireStaff, getReports);
 
 // ── Error handling ───────────────────────────────────────────────────────────
 app.use(notFound);
